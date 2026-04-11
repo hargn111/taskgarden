@@ -25,6 +25,11 @@ requires-python = ">=3.10"
 dependencies = []
 keywords = ["todo", "cli", "task-management", "collaboration"]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<9",
+]
+
 [project.scripts]
 taskgarden = "taskgarden.cli:main"
 
