@@ -117,6 +117,11 @@ def append_note(item: TodoItem, note: str) -> None:
         item["note"] = note
 
 
+def set_title(item: TodoItem, title: str) -> None:
+    """Update the item's title."""
+    item["title"] = title.strip()
+
+
 def reminder_due(item: TodoItem, now: Optional[datetime] = None) -> bool:
     """Return True if the item is due for a reminder."""
     if item.get("status") != "open":
