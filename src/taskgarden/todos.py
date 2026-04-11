@@ -135,6 +135,27 @@ def reminder_due(item: TodoItem, now: Optional[datetime] = None) -> bool:
     return elapsed_hours >= float(interval)
 
 
+def stale_task_due(
+    item: TodoItem,
+    stale_days: float,
+    now: Optional[datetime] = None,
+) -> bool:
+    """Return True if an open planned item has lingered at least stale_days."""
+    if item.get("status") != "open":
+        return False
+    if item.get("bucket") != "planned":
+        return False
+
+    created_at = item.get("created_at")
+    if not created_at:
+        return True
+
+    created_dt = parse_iso(created_at)
+    now_dt = now or datetime.now(timezone.utc)
+    elapsed_days = (now_dt - created_dt).total_seconds() / 86400
+    return elapsed_days >= float(stale_days)
+
+
 def create_item(
     title: str,
     note: str = "",

@@ -13,6 +13,7 @@ from .todos import (
     load_data,
     reminder_due,
     save_data,
+    stale_task_due,
     now_iso,
     parse_iso,
     VALID_BUCKETS,
@@ -62,6 +63,12 @@ def cmd_list(args: argparse.Namespace) -> None:
     """List todo items, optionally filtered."""
     data = load_data()
     items = data["items"]
+
+    if args.stale_days is not None:
+        from datetime import datetime, timezone
+
+        now = datetime.now(timezone.utc)
+        items = [item for item in items if stale_task_due(item, args.stale_days, now)]
 
     if args.tag:
         items = [item for item in items if args.tag in item.get("tags", [])]
@@ -200,6 +207,11 @@ def build_parser() -> argparse.ArgumentParser:
     list_p.add_argument("--tag")
     list_p.add_argument("--bucket", choices=sorted(VALID_BUCKETS))
     list_p.add_argument("--due-reminders", action="store_true")
+    list_p.add_argument(
+        "--stale-days",
+        type=float,
+        help="Show open planned items that have been around at least this many days",
+    )
     list_p.set_defaults(func=cmd_list)
 
     # done

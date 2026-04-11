@@ -1,21 +1,21 @@
 """Unit tests for Task Garden."""
 
-import json
-import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
 from taskgarden.todos import (
     TodoData,
     TodoItem,
+    append_note,
     create_item,
     find_item,
     load_data,
     normalize_item,
-    reminder_due,
-    save_data,
     now_iso,
     parse_iso,
+    reminder_due,
+    save_data,
+    stale_task_due,
 )
 
 
@@ -127,6 +127,34 @@ def test_reminder_due() -> None:
     # Done item → never due
     item["status"] = "done"
     assert not reminder_due(item, now)
+
+
+def test_stale_task_due() -> None:
+    """Test stale planned task review logic."""
+    now = parse_iso("2026-01-15T12:00:00+00:00")
+
+    item: TodoItem = {
+        "id": "x",
+        "title": "review me",
+        "status": "open",
+        "bucket": "planned",
+        "created_at": "2026-01-01T12:00:00+00:00",
+        "note": "",
+        "tags": [],
+        "completed_at": None,
+        "remind_interval_hours": None,
+        "last_reminder_at": None,
+    }
+
+    assert stale_task_due(item, 14, now)
+    assert not stale_task_due(item, 15, now)
+
+    item["bucket"] = "unplanned"
+    assert not stale_task_due(item, 14, now)
+
+    item["bucket"] = "planned"
+    item["status"] = "done"
+    assert not stale_task_due(item, 14, now)
 
 
 def test_append_note() -> None:
