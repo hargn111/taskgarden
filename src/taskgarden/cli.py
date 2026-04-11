@@ -13,6 +13,7 @@ from .todos import (
     load_data,
     reminder_due,
     save_data,
+    set_title,
     stale_task_due,
     now_iso,
     parse_iso,
@@ -140,6 +141,22 @@ def cmd_note(args: argparse.Namespace) -> None:
     print_json(item)
 
 
+def cmd_set_title(args: argparse.Namespace) -> None:
+    """Update a todo item's title."""
+    data = load_data()
+    item = find_item(data, args.id)
+    if not item:
+        die(f"Todo not found: {args.id}")
+
+    title = args.title.strip()
+    if not title:
+        die("Title cannot be empty")
+
+    set_title(item, title)
+    save_data(data)
+    print_json(item)
+
+
 def cmd_set_reminder(args: argparse.Namespace) -> None:
     """Set, update, or clear a reminder interval."""
     data = load_data()
@@ -240,6 +257,12 @@ def build_parser() -> argparse.ArgumentParser:
     note_p.add_argument("id")
     note_p.add_argument("text")
     note_p.set_defaults(func=cmd_note)
+
+    # set-title
+    title_p = sub.add_parser("set-title", help="Update a todo item's title")
+    title_p.add_argument("id")
+    title_p.add_argument("title")
+    title_p.set_defaults(func=cmd_set_title)
 
     # set‑reminder
     remind_p = sub.add_parser(

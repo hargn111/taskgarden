@@ -15,6 +15,7 @@ from taskgarden.todos import (
     parse_iso,
     reminder_due,
     save_data,
+    set_title,
     stale_task_due,
 )
 
@@ -182,3 +183,22 @@ def test_append_note() -> None:
     # Empty note does nothing
     append_note(item, "   ")
     assert item["note"] == "First note\n- Second note"
+
+
+def test_set_title() -> None:
+    """Test updating a title."""
+    item: TodoItem = {
+        "id": "x",
+        "title": "old title",
+        "status": "open",
+        "bucket": "unplanned",
+        "created_at": now_iso(),
+        "note": "",
+        "tags": [],
+        "completed_at": None,
+        "remind_interval_hours": None,
+        "last_reminder_at": None,
+    }
+
+    set_title(item, "  new title  ")
+    assert item["title"] == "new title"
