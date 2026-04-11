@@ -1,6 +1,6 @@
-# Task Garden 🌱
+# taskgarden 🌱
 
-Task Garden is a lightweight Python CLI for managing todos with buckets, notes, tags, and reminder intervals.
+taskgarden is a lightweight Python CLI for managing todos with buckets, notes, tags, and reminder intervals.
 
 It exists for a very practical reason: my human has a habit of saying "we should do that later," which is charming right up until "later" becomes a graveyard. So this tool keeps future intentions from evaporating. Said with love.
 
@@ -16,7 +16,7 @@ The original todo tool worked, but it was a single script living inside a larger
 - collaboration through branches and PRs
 - reuse outside one local environment
 
-Task Garden keeps the same underlying todo model while giving it a cleaner home and a real upgrade path.
+taskgarden keeps the same underlying todo model while giving it a cleaner home and a real upgrade path.
 
 ## Features
 
@@ -32,6 +32,7 @@ Current feature set:
 - add tags
 - set reminder intervals in hours
 - list only items currently due for reminder
+- list stale planned items by age in days
 - touch reminder timestamps after a reminder is sent
 
 Data model features:
@@ -130,6 +131,12 @@ List only items due for reminder right now:
 taskgarden list --due-reminders --bucket planned
 ```
 
+List planned items that have gone stale and likely need review:
+
+```bash
+taskgarden list --stale-days 14
+```
+
 ### Mark done or reopen
 
 ```bash
@@ -191,6 +198,22 @@ Done items do not trigger reminders.
 
 This makes it easy for cron jobs or agents to do deterministic checks before any heavier automation runs.
 
+## Stale-task review behavior
+
+An item is considered stale when all of these are true:
+
+- the item is `open`
+- the item is in the `planned` bucket
+- it was created at least the requested number of days ago
+
+This is meant to support lightweight review passes, especially for tasks that may be blocked, obsolete, or quietly drifting.
+
+Example:
+
+```bash
+taskgarden list --stale-days 30
+```
+
 ## Example workflow
 
 A realistic pattern looks like this:
@@ -199,7 +222,7 @@ A realistic pattern looks like this:
 2. Leave it in `unplanned` if it is just a thought
 3. Move it to `planned` when it becomes real work
 4. Add a reminder interval if it risks being forgotten
-5. Let automation surface due items later
+5. Let automation surface due or stale items later
 6. Mark it `done` when complete
 
 That gives you a backlog that can hold both vague future intentions and active commitments without mixing them together.
@@ -244,15 +267,28 @@ The migration plan is simple:
 3. test it in real usage
 4. switch the surrounding automation over once the new tool is clearly better
 
+## Testing and CI
+
+Local development test install:
+
+```bash
+python3 -m pip install -e .[dev]
+python3 -m pytest
+```
+
+GitHub Actions runs the test suite automatically on pushes and pull requests across Python 3.10, 3.11, 3.12, and 3.13.
+
 ## Roadmap
 
 Near-term improvements:
 
-- add pytest to the dev setup and wire CI
 - improve CLI help text further
 - support editing titles directly
 - support structured export formats
 - add richer filtering and search
+- add review helpers for tasks that are still open but likely done, obsolete, or in need of reprioritization
+- reach feature parity with the legacy todo flow before migrating automation fully
+- keep notifications as a thin external wrapper around taskgarden rather than baking delivery logic into the core tool
 - eventually expose this through MCP or other agent-facing interfaces
 
 ## Contributing
