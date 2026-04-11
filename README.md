@@ -1,22 +1,8 @@
-# taskgarden 🌱
+# Task Garden 🌱
 
-taskgarden is a lightweight Python CLI for managing todos with buckets, notes, tags, and reminder intervals.
+Task Garden is a lightweight Python CLI for managing todos with buckets, notes, tags, and reminder intervals.
 
-It exists for a very practical reason: my human has a habit of saying "we should do that later," which is charming right up until "later" becomes a graveyard. So this tool keeps future intentions from evaporating. Said with love.
-
-This repository is also a collaboration testbed between a human and an AI assistant. The goal is not just to track tasks, but to build a tool that is pleasant to use, easy to extend, and solid enough to eventually replace the one-off script currently in service.
-
-## Why this exists
-
-The original todo tool worked, but it was a single script living inside a larger workspace. That was fine for proving the idea, but not great for:
-
-- testing
-- packaging
-- future features
-- collaboration through branches and PRs
-- reuse outside one local environment
-
-taskgarden keeps the same underlying todo model while giving it a cleaner home and a real upgrade path.
+It is designed to fit naturally into an OpenClaw workspace while staying simple enough to use on its own.
 
 ## Features
 
@@ -48,15 +34,13 @@ Data model features:
 
 ## Data format and compatibility
 
-Task Garden is intentionally compatible with the existing todo data file used in the OpenClaw workspace.
+Task Garden uses the OpenClaw workspace todo path by default.
 
 Default path:
 
 ```bash
 /root/.openclaw/workspace/state/todos.json
 ```
-
-That means this project can grow into a replacement for the original script without forcing a migration first.
 
 You can override the path with an environment variable:
 
@@ -72,6 +56,12 @@ export TASKGARDEN_DATA_PATH=/path/to/todos.json
 git clone https://github.com/hargn111/taskgarden.git
 cd taskgarden
 python3 -m pip install -e .
+```
+
+For local development with tests:
+
+```bash
+python3 -m pip install -e .[dev]
 ```
 
 If you do not want to install it yet, you can also run it directly from the repo:
@@ -159,6 +149,12 @@ taskgarden note 01dd2b90 "Jordan said this can wait until after the GitHub PR fl
 
 If a note already exists, Task Garden appends the new text as another line instead of replacing the old one.
 
+### Edit a title
+
+```bash
+taskgarden set-title 01dd2b90 "Create Codex ACP validation repo"
+```
+
 ### Set or clear reminders
 
 Set a reminder cadence in hours:
@@ -216,16 +212,12 @@ taskgarden list --stale-days 30
 
 ## Example workflow
 
-A realistic pattern looks like this:
-
-1. Capture a task quickly
-2. Leave it in `unplanned` if it is just a thought
-3. Move it to `planned` when it becomes real work
-4. Add a reminder interval if it risks being forgotten
-5. Let automation surface due or stale items later
-6. Mark it `done` when complete
-
-That gives you a backlog that can hold both vague future intentions and active commitments without mixing them together.
+1. Add tasks quickly as they come up
+2. Keep rough ideas in `unplanned`
+3. Move active work into `planned`
+4. Add notes, tags, or reminders as needed
+5. Use reminder and stale-task filters to review what needs attention
+6. Mark tasks done when finished
 
 ## Output format
 
@@ -256,23 +248,11 @@ taskgarden/
     └── test_todos.py
 ```
 
-## Development notes
-
-This is intended to become the cleaner successor to the original todo script, but not by breaking the live system recklessly.
-
-The migration plan is simple:
-
-1. build the replacement in parallel
-2. keep compatibility with the live JSON data
-3. test it in real usage
-4. switch the surrounding automation over once the new tool is clearly better
-
 ## Testing and CI
 
-Local development test install:
+Run the test suite locally with:
 
 ```bash
-python3 -m pip install -e .[dev]
 python3 -m pytest
 ```
 
@@ -283,7 +263,6 @@ GitHub Actions runs the test suite automatically on pushes and pull requests acr
 Near-term improvements:
 
 - improve CLI help text further
-- support editing titles directly
 - support structured export formats
 - add richer filtering and search
 - add review helpers for tasks that are still open but likely done, obsolete, or in need of reprioritization
