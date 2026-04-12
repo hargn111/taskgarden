@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "A lightweight CLI for managing todos with reminders and collaboration features."
 readme = "README.md"
 authors = [
-    { name = "Freya North", email = "freya.north.37@gmail.com" },
+    { name = "Freya North" },
 ]
 license = { text = "MIT" }
 classifiers = [
