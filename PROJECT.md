@@ -11,6 +11,5 @@
 ## Internal notes
 
 - README should stay oriented toward a fresh OpenClaw user or standalone installer, not toward internal migration history.
-- Historical background, migration notes, and maintainer-only context belong here or in private local project memory, not in README.md.
-- The project currently keeps compatibility with the OpenClaw workspace todo JSON so automation can migrate incrementally without a forced cutover.
-- Active migration planning lives in `MIGRATION_PLAN.md`.
+- Historical background and maintainer-only context belong here or in private local project memory, not in README.md.
+- The project uses the OpenClaw workspace todo JSON by default.

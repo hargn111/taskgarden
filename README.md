@@ -266,7 +266,6 @@ Near-term improvements:
 - support structured export formats
 - add richer filtering and search
 - add review helpers for tasks that are still open but likely done, obsolete, or in need of reprioritization
-- reach feature parity with the legacy todo flow before migrating automation fully
 - keep notifications as a thin external wrapper around taskgarden rather than baking delivery logic into the core tool
 - eventually expose this through MCP or other agent-facing interfaces
 
