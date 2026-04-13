@@ -41,6 +41,7 @@ jobs:
             --exclude='__pycache__' \
             --exclude='.pytest_cache' \
             -czf /tmp/taskgarden-release.tgz .
+          cp /tmp/taskgarden-release.tgz ./taskgarden-release.tgz
 
       - name: Copy release bundle to server
         uses: appleboy/scp-action@v0.1.7
@@ -49,7 +50,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT }}
-          source: /tmp/taskgarden-release.tgz
+          source: taskgarden-release.tgz
           target: /tmp/taskgarden-deploy
           overwrite: true
 
