@@ -30,6 +30,7 @@ Data model features:
 - optional notes
 - optional tags
 - optional reminder cadence
+- rolling numbered `.bak` backups on mutation, keeping the newest 5 previous versions
 - compatibility with the existing workspace todo JSON format
 
 ## Data format and compatibility
@@ -234,6 +235,8 @@ List output is intentionally compact and readable in terminals and chat logs:
 
 Mutation commands output JSON so other tools and scripts can consume them directly.
 
+Task Garden also writes rolling numbered backups beside the data file on mutation, for example `todos.json.bak1` through `todos.json.bak5`, with `.bak1` being the newest previous version.
+
 ## Project layout
 
 ```text
@@ -258,6 +261,39 @@ python3 -m pytest
 
 GitHub Actions runs the test suite automatically on pushes and pull requests across Python 3.10, 3.11, 3.12, and 3.13.
 
+A separate deploy workflow can also run on merges to `main` or via manual dispatch.
+
+## Deployment
+
+For a host-side release install outside the repo checkout, use:
+
+```bash
+scripts/deploy_release.sh /path/to/taskgarden/source
+```
+
+The deploy script is designed for a release-based layout rather than running directly from a working tree. It:
+
+- copies the source tree into a versioned release directory
+- creates a dedicated virtual environment for that release
+- installs the package into that virtual environment
+- runs a smoke test against a temporary fixture todo file
+- updates a `current` symlink to point at the new release
+- prunes older releases after a successful deployment
+
+For rollback, use:
+
+```bash
+scripts/rollback_release.sh previous
+```
+
+Or roll back to a specific release id:
+
+```bash
+scripts/rollback_release.sh <release-id>
+```
+
+A GitHub Actions deploy workflow is included for repositories that want CI/CD-based deployment over SSH after tests pass. See `.github/workflows/deploy.yml` for the expected secret names and deployment flow.
+
 ## Roadmap
 
 Near-term improvements:
@@ -266,6 +302,8 @@ Near-term improvements:
 - support structured export formats
 - add richer filtering and search
 - add review helpers for tasks that are still open but likely done, obsolete, or in need of reprioritization
+- support a `canceled` status for tasks that are no longer desired but were not completed
+- add richer review and triage flows for tasks that are stale, blocked, or no longer relevant
 - keep notifications as a thin external wrapper around taskgarden rather than baking delivery logic into the core tool
 - eventually expose this through MCP or other agent-facing interfaces
 
