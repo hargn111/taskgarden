@@ -17,7 +17,7 @@ from unittest.mock import patch
 import taskgarden.cli as tg_cli
 import taskgarden.todos as tg_todos
 
-LEGACY_TODO_PATH = Path("/root/.openclaw/workspace/scripts/todo.py")
+LEGACY_TODO_PATH = Path(__file__).parent / "fixtures" / "legacy_todo.py"
 
 
 spec = importlib.util.spec_from_file_location("legacy_todo", LEGACY_TODO_PATH)
