@@ -68,4 +68,4 @@ jobs:
             mkdir -p "$STAGE_DIR"
             tar -xzf /tmp/taskgarden-deploy/taskgarden-release.tgz -C "$STAGE_DIR"
             chmod +x "$STAGE_DIR/scripts/deploy_release.sh"
-            TASKGARDEN_RELEASE_ID="${{ github.sha }}" "$STAGE_DIR/scripts/deploy_release.sh" "$STAGE_DIR"
+            TASKGARDEN_RELEASE_ID="${{ github.sha }}" sudo -n /usr/local/sbin/taskgarden-deploy-release "$STAGE_DIR"
