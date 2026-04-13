@@ -2,6 +2,8 @@
 
 import json
 import os
+import shutil
+import tempfile
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,6 +12,7 @@ from typing import Any, Dict, List, Literal, Optional, TypedDict, Union
 # Default data path (same as the old script)
 DEFAULT_DATA_PATH = Path("/root/.openclaw/workspace/state/todos.json")
 DATA_PATH = Path(os.getenv("TASKGARDEN_DATA_PATH", DEFAULT_DATA_PATH))
+MAX_BACKUPS = 5
 
 VALID_BUCKETS = {"unplanned", "planned"}
 VALID_STATUS = {"open", "done"}
@@ -40,6 +43,11 @@ class TodoData(TypedDict):
 def now_iso() -> str:
     """Return current UTC time as ISO 8601 string."""
     return datetime.now(timezone.utc).isoformat()
+
+
+def normalize_iso(value: str) -> str:
+    """Normalize an ISO 8601 timestamp string to the local serializer form."""
+    return parse_iso(value).isoformat()
 
 
 def parse_iso(value: str) -> datetime:
@@ -90,12 +98,55 @@ def load_data() -> TodoData:
     return data  # type: ignore
 
 
+def backup_path(path: Path, index: int) -> Path:
+    """Return the numbered backup path for a data file."""
+    return path.with_name(f"{path.name}.bak{index}")
+
+
+def rotate_backups(path: Path, keep: int = MAX_BACKUPS) -> None:
+    """Rotate numbered backups so bak1 is always the newest previous file."""
+    if keep < 1:
+        return
+
+    oldest = backup_path(path, keep)
+    if oldest.exists():
+        oldest.unlink()
+
+    for index in range(keep - 1, 0, -1):
+        current = backup_path(path, index)
+        if current.exists():
+            current.replace(backup_path(path, index + 1))
+
+    if path.exists():
+        shutil.copy2(path, backup_path(path, 1))
+
+
 def save_data(data: TodoData) -> None:
-    """Save todo data to JSON file."""
+    """Save todo data to JSON file with rolling backups and atomic replacement."""
     DATA_PATH.parent.mkdir(parents=True, exist_ok=True)
     data["version"] = 2
     data["items"] = [normalize_item(item) for item in data["items"]]
-    DATA_PATH.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+    serialized = json.dumps(data, indent=2, sort_keys=True) + "\n"
+
+    if DATA_PATH.exists():
+        rotate_backups(DATA_PATH)
+
+    fd, temp_path_str = tempfile.mkstemp(
+        dir=str(DATA_PATH.parent),
+        prefix=f".{DATA_PATH.name}.",
+        suffix=".tmp",
+        text=True,
+    )
+    temp_path = Path(temp_path_str)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            handle.write(serialized)
+            handle.flush()
+            os.fsync(handle.fileno())
+        temp_path.replace(DATA_PATH)
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
 
 
 def find_item(data: TodoData, item_id: str) -> Optional[TodoItem]:

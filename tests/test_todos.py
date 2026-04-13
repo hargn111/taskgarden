@@ -1,15 +1,21 @@
 """Unit tests for Task Garden."""
 
+import json
 from pathlib import Path
 from unittest.mock import patch
 
+from argparse import Namespace
+
+import taskgarden.cli as tg_cli
 from taskgarden.todos import (
     TodoData,
     TodoItem,
     append_note,
+    backup_path,
     create_item,
     find_item,
     load_data,
+    normalize_iso,
     normalize_item,
     now_iso,
     parse_iso,
@@ -79,6 +85,49 @@ def test_load_save_data(tmp_path: Path) -> None:
         assert len(data2["items"]) == 1
         assert data2["items"][0]["id"] == item["id"]
         assert data2["items"][0]["title"] == "Test todo"
+        assert not backup_path(data_path, 1).exists()
+
+
+def test_save_data_creates_rolling_backups(tmp_path: Path) -> None:
+    """Test that repeated saves create numbered rolling backups."""
+    data_path = tmp_path / "todos.json"
+    with patch("taskgarden.todos.DATA_PATH", data_path):
+        for index in range(7):
+            save_data(
+                {
+                    "version": 2,
+                    "items": [
+                        {
+                            "id": f"id{index}",
+                            "title": f"title-{index}",
+                        }
+                    ],
+                }
+            )
+
+        current = load_data()
+        assert current["items"][0]["id"] == "id6"
+        assert backup_path(data_path, 1).exists()
+        assert backup_path(data_path, 2).exists()
+        assert backup_path(data_path, 3).exists()
+        assert backup_path(data_path, 4).exists()
+        assert backup_path(data_path, 5).exists()
+        assert not backup_path(data_path, 6).exists()
+
+        newest_backup = normalize_item(json_load(backup_path(data_path, 1))["items"][0])
+        oldest_backup = normalize_item(json_load(backup_path(data_path, 5))["items"][0])
+        assert newest_backup["id"] == "id5"
+        assert oldest_backup["id"] == "id1"
+
+
+def test_save_data_leaves_no_temp_files(tmp_path: Path) -> None:
+    """Test that atomic save does not leave temp files behind."""
+    data_path = tmp_path / "todos.json"
+    with patch("taskgarden.todos.DATA_PATH", data_path):
+        save_data({"version": 2, "items": [{"id": "a", "title": "alpha"}]})
+        leftovers = list(tmp_path.glob(".todos.json.*.tmp"))
+        assert leftovers == []
+        assert load_data()["items"][0]["id"] == "a"
 
 
 def test_find_item() -> None:
@@ -183,6 +232,35 @@ def test_append_note() -> None:
     # Empty note does nothing
     append_note(item, "   ")
     assert item["note"] == "First note\n- Second note"
+
+
+def json_load(path: Path) -> dict:
+    return json.loads(path.read_text())
+
+
+def test_normalize_iso() -> None:
+    assert normalize_iso("2026-04-13T00:00:00Z") == "2026-04-13T00:00:00+00:00"
+
+
+def test_touch_reminder_at_timestamp(tmp_path: Path) -> None:
+    data_path = tmp_path / "todos.json"
+    with patch("taskgarden.todos.DATA_PATH", data_path), patch("taskgarden.cli.load_data", side_effect=tg_cli.load_data), patch("taskgarden.cli.save_data", side_effect=tg_cli.save_data):
+        save_data({"version": 2, "items": [{"id": "x", "title": "alpha"}]})
+        tg_cli.cmd_touch_reminder(Namespace(id="x", at="2026-04-13T00:00:00Z"))
+        data = load_data()
+        assert data["items"][0]["last_reminder_at"] == "2026-04-13T00:00:00+00:00"
+
+
+def test_set_reminder_touch_now_at_timestamp(tmp_path: Path) -> None:
+    data_path = tmp_path / "todos.json"
+    with patch("taskgarden.todos.DATA_PATH", data_path), patch("taskgarden.cli.load_data", side_effect=tg_cli.load_data), patch("taskgarden.cli.save_data", side_effect=tg_cli.save_data):
+        save_data({"version": 2, "items": [{"id": "x", "title": "alpha"}]})
+        tg_cli.cmd_set_reminder(
+            Namespace(id="x", hours=6.0, touch_now=True, at="2026-04-13T00:00:00Z", clear=False)
+        )
+        data = load_data()
+        assert data["items"][0]["remind_interval_hours"] == 6.0
+        assert data["items"][0]["last_reminder_at"] == "2026-04-13T00:00:00+00:00"
 
 
 def test_set_title() -> None:

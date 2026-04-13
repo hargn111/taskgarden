@@ -11,6 +11,7 @@ from .todos import (
     create_item,
     find_item,
     load_data,
+    normalize_iso,
     reminder_due,
     save_data,
     set_title,
@@ -172,19 +173,21 @@ def cmd_set_reminder(args: argparse.Namespace) -> None:
             die("Hours required unless --clear is used")
         item["remind_interval_hours"] = args.hours
         if args.touch_now:
-            item["last_reminder_at"] = now_iso()
+            at_value = getattr(args, "at", None)
+            item["last_reminder_at"] = normalize_iso(at_value) if at_value else now_iso()
 
     save_data(data)
     print_json(item)
 
 
 def cmd_touch_reminder(args: argparse.Namespace) -> None:
-    """Update the last reminder timestamp to now."""
+    """Update the last reminder timestamp to now or a specified timestamp."""
     data = load_data()
     item = find_item(data, args.id)
     if not item:
         die(f"Todo not found: {args.id}")
-    item["last_reminder_at"] = now_iso()
+    at_value = getattr(args, "at", None)
+    item["last_reminder_at"] = normalize_iso(at_value) if at_value else now_iso()
     save_data(data)
     print_json(item)
 
@@ -271,12 +274,14 @@ def build_parser() -> argparse.ArgumentParser:
     remind_p.add_argument("id")
     remind_p.add_argument("hours", type=float, nargs="?")
     remind_p.add_argument("--touch-now", action="store_true")
+    remind_p.add_argument("--at", help="ISO 8601 timestamp to use for last_reminder_at when touching")
     remind_p.add_argument("--clear", action="store_true")
     remind_p.set_defaults(func=cmd_set_reminder)
 
     # touch‑reminder
     touch_p = sub.add_parser("touch-reminder", help="Update last reminder time to now")
     touch_p.add_argument("id")
+    touch_p.add_argument("--at", help="ISO 8601 timestamp to use for last_reminder_at")
     touch_p.set_defaults(func=cmd_touch_reminder)
 
     return parser
