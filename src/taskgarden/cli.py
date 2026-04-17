@@ -1,9 +1,11 @@
 """Command-line interface for Task Garden."""
 
 import argparse
+import json
 import sys
 from typing import List, Optional
 
+from .reminders import generate_reminder_message, load_reminder_config
 from .todos import (
     TodoData,
     TodoItem,
@@ -192,6 +194,27 @@ def cmd_touch_reminder(args: argparse.Namespace) -> None:
     print_json(item)
 
 
+def cmd_reminder_message(args: argparse.Namespace) -> None:
+    """Generate reminder text for due items using config-driven fallback."""
+    data = load_data()
+    items = data["items"]
+
+    if args.bucket:
+        items = [item for item in items if item.get("bucket") == args.bucket]
+    if args.due_reminders:
+        from datetime import datetime, timezone
+
+        now = datetime.now(timezone.utc)
+        items = [item for item in items if reminder_due(item, now)]
+
+    if not items:
+        die("No todo items matched reminder-message selection")
+
+    config = load_reminder_config()
+    result = generate_reminder_message(items, config=config)
+    print(json.dumps(result, indent=2, sort_keys=True))
+
+
 def print_json(obj: TodoItem) -> None:
     """Print an item as formatted JSON."""
     import json
@@ -283,6 +306,19 @@ def build_parser() -> argparse.ArgumentParser:
     touch_p.add_argument("id")
     touch_p.add_argument("--at", help="ISO 8601 timestamp to use for last_reminder_at")
     touch_p.set_defaults(func=cmd_touch_reminder)
+
+    # reminder-message
+    reminder_message_p = sub.add_parser(
+        "reminder-message",
+        help="Generate reminder text for selected items using config-driven model fallback",
+    )
+    reminder_message_p.add_argument("--bucket", choices=sorted(VALID_BUCKETS))
+    reminder_message_p.add_argument(
+        "--due-reminders",
+        action="store_true",
+        help="Restrict to items currently due for reminder",
+    )
+    reminder_message_p.set_defaults(func=cmd_reminder_message)
 
     return parser
 

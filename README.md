@@ -20,6 +20,7 @@ Current feature set:
 - list only items currently due for reminder
 - list stale planned items by age in days
 - touch reminder timestamps after a reminder is sent
+- generate reminder message text through a config-driven model and fallback chain
 
 Data model features:
 
@@ -182,6 +183,39 @@ Mark an item as having been reminded right now:
 taskgarden touch-reminder 01dd2b90
 ```
 
+Generate reminder text for due planned items:
+
+```bash
+taskgarden reminder-message --bucket planned --due-reminders
+```
+
+By default this reads reminder-generation config from:
+
+```bash
+/root/.openclaw/workspace/state/automation/reminder-config.json
+```
+
+You can override that path with:
+
+```bash
+export TASKGARDEN_REMINDER_CONFIG_PATH=/path/to/reminder-config.json
+```
+
+Example config:
+
+```json
+{
+  "messageGeneration": {
+    "primaryModel": "google/gemini-3.1-flash-lite-preview",
+    "fallbackModels": ["plain"],
+    "timeoutSeconds": 90,
+    "stylePrompt": "Brief, direct, and lightly human. Sound like a useful reminder, not a chatbot."
+  }
+}
+```
+
+If the configured model fails, Task Garden will try each fallback in order. The special fallback value `plain` uses deterministic `Reminder: ...` lines and does not require any model call.
+
 ## Reminder behavior
 
 A reminder is considered due when all of these are true:
@@ -246,6 +280,7 @@ taskgarden/
 ├── src/taskgarden/
 │   ├── __init__.py
 │   ├── cli.py
+│   ├── reminders.py
 │   └── todos.py
 └── tests/
     └── test_todos.py

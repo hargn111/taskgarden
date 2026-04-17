@@ -3,10 +3,12 @@
 import json
 from pathlib import Path
 from unittest.mock import patch
+import subprocess
 
 from argparse import Namespace
 
 import taskgarden.cli as tg_cli
+from taskgarden.reminders import generate_reminder_message, load_reminder_config
 from taskgarden.todos import (
     TodoData,
     TodoItem,
@@ -280,3 +282,143 @@ def test_set_title() -> None:
 
     set_title(item, "  new title  ")
     assert item["title"] == "new title"
+
+
+def test_load_reminder_config_defaults(tmp_path: Path) -> None:
+    config_path = tmp_path / "missing-reminder-config.json"
+    config = load_reminder_config(config_path)
+    assert config["primaryModel"] == "plain"
+    assert config["fallbackModels"] == []
+    assert config["timeoutSeconds"] == 90
+
+
+def test_generate_reminder_message_uses_model_then_returns_text() -> None:
+    items = [
+        {
+            "id": "x",
+            "title": "Look up batteries",
+            "status": "open",
+            "bucket": "planned",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "note": "",
+            "tags": [],
+            "completed_at": None,
+            "remind_interval_hours": 2.0,
+            "last_reminder_at": None,
+        }
+    ]
+    config = {
+        "primaryModel": "google/gemini-3.1-flash-lite-preview",
+        "fallbackModels": ["plain"],
+        "timeoutSeconds": 30,
+        "stylePrompt": "Brief and useful.",
+    }
+
+    def fake_runner(*args, **kwargs):
+        return subprocess.CompletedProcess(
+            args=args[0],
+            returncode=0,
+            stdout=json.dumps(
+                {
+                    "provider": "google",
+                    "model": "gemini-3.1-flash-lite-preview",
+                    "outputs": [{"text": "Don't forget to look up batteries."}],
+                }
+            ),
+            stderr="",
+        )
+
+    result = generate_reminder_message(items, config=config, runner=fake_runner)
+    assert result["mode"] == "model"
+    assert result["provider"] == "google"
+    assert result["model"] == "gemini-3.1-flash-lite-preview"
+    assert result["text"] == "Don't forget to look up batteries."
+    assert result["attempts"] == [{"model": "google/gemini-3.1-flash-lite-preview", "ok": True}]
+
+
+def test_generate_reminder_message_falls_back_to_plain() -> None:
+    items = [
+        {
+            "id": "x",
+            "title": "Fallback test reminder",
+            "status": "open",
+            "bucket": "planned",
+            "created_at": "2026-01-01T00:00:00+00:00",
+            "note": "",
+            "tags": [],
+            "completed_at": None,
+            "remind_interval_hours": 2.0,
+            "last_reminder_at": None,
+        }
+    ]
+    config = {
+        "primaryModel": "google/not-a-real-model",
+        "fallbackModels": ["plain"],
+        "timeoutSeconds": 5,
+        "stylePrompt": "Brief and useful.",
+    }
+
+    def fake_runner(*args, **kwargs):
+        raise subprocess.TimeoutExpired(cmd=args[0], timeout=5)
+
+    result = generate_reminder_message(items, config=config, runner=fake_runner)
+    assert result["mode"] == "plain"
+    assert result["model"] == "plain"
+    assert result["text"] == "Reminder: Fallback test reminder"
+    assert result["attempts"][0]["model"] == "google/not-a-real-model"
+    assert result["attempts"][0]["ok"] is False
+
+
+def test_cmd_reminder_message_due_reminders(tmp_path: Path, capsys) -> None:
+    data_path = tmp_path / "todos.json"
+    config_path = tmp_path / "reminder-config.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "messageGeneration": {
+                    "primaryModel": "plain",
+                    "fallbackModels": [],
+                    "timeoutSeconds": 30,
+                }
+            }
+        )
+    )
+
+    with patch("taskgarden.todos.DATA_PATH", data_path), patch(
+        "taskgarden.reminders.DEFAULT_REMINDER_CONFIG_PATH", config_path
+    ):
+        save_data(
+            {
+                "version": 2,
+                "items": [
+                    {
+                        "id": "due1",
+                        "title": "Due reminder",
+                        "bucket": "planned",
+                        "status": "open",
+                        "created_at": "2026-01-01T00:00:00+00:00",
+                        "completed_at": None,
+                        "last_reminder_at": None,
+                        "remind_interval_hours": 1.0,
+                        "note": "",
+                        "tags": [],
+                    },
+                    {
+                        "id": "later1",
+                        "title": "Not due yet",
+                        "bucket": "planned",
+                        "status": "open",
+                        "created_at": now_iso(),
+                        "completed_at": None,
+                        "last_reminder_at": None,
+                        "remind_interval_hours": 24.0,
+                        "note": "",
+                        "tags": [],
+                    },
+                ],
+            }
+        )
+        tg_cli.cmd_reminder_message(Namespace(bucket="planned", due_reminders=True))
+        output = json.loads(capsys.readouterr().out)
+        assert output["mode"] == "plain"
+        assert output["text"] == "Reminder: Due reminder"
