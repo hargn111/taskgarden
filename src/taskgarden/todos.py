@@ -9,9 +9,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, TypedDict, Union
 
-# Default data path (same as the old script)
-DEFAULT_DATA_PATH = Path("/root/.openclaw/workspace/state/todos.json")
+# Default data path (same as the live Hermes workspace)
+DEFAULT_DATA_PATH = Path("/root/hermes-workspace/state/todos.json")
 DATA_PATH = Path(os.getenv("TASKGARDEN_DATA_PATH", DEFAULT_DATA_PATH))
+EXPORT_PATH_RAW = os.getenv("TASKGARDEN_EXPORT_PATH")
+EXPORT_PATH: Optional[Path] = Path(EXPORT_PATH_RAW) if EXPORT_PATH_RAW else None
 MAX_BACKUPS = 5
 
 VALID_BUCKETS = {"unplanned", "planned"}
@@ -147,6 +149,28 @@ def save_data(data: TodoData) -> None:
     finally:
         if temp_path.exists():
             temp_path.unlink()
+
+    if EXPORT_PATH is None:
+        return
+
+    EXPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
+    export_fd, export_temp_path_str = tempfile.mkstemp(
+        dir=str(EXPORT_PATH.parent),
+        prefix=f".{EXPORT_PATH.name}.",
+        suffix=".tmp",
+        text=True,
+    )
+    export_temp_path = Path(export_temp_path_str)
+    try:
+        with os.fdopen(export_fd, "w", encoding="utf-8") as handle:
+            handle.write(serialized)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(export_temp_path, 0o644)
+        export_temp_path.replace(EXPORT_PATH)
+    finally:
+        if export_temp_path.exists():
+            export_temp_path.unlink()
 
 
 def find_item(data: TodoData, item_id: str) -> Optional[TodoItem]:
