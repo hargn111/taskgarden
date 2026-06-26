@@ -21,6 +21,7 @@ Current feature set:
 - list stale planned items by age in days
 - touch reminder timestamps after a reminder is sent
 - generate reminder message text through a config-driven model and fallback chain
+- run a bundled local web UI for task capture, search, triage, editing, and deletion
 
 Data model features:
 
@@ -36,12 +37,12 @@ Data model features:
 
 ## Data format and compatibility
 
-Task Garden uses the OpenClaw workspace todo path by default.
+Task Garden uses the Hermes workspace todo path by default.
 
 Default path:
 
 ```bash
-/root/.openclaw/workspace/state/todos.json
+/root/hermes-workspace/state/todos.json
 ```
 
 You can override the path with an environment variable:
@@ -49,6 +50,14 @@ You can override the path with an environment variable:
 ```bash
 export TASKGARDEN_DATA_PATH=/path/to/todos.json
 ```
+
+If another service needs a readable published snapshot, you can also set:
+
+```bash
+export TASKGARDEN_EXPORT_PATH=/path/to/exported-todos.json
+```
+
+When set, Task Garden writes the normal canonical data file and also publishes a readable export copy on each save.
 
 ## Installation
 
@@ -71,6 +80,40 @@ If you do not want to install it yet, you can also run it directly from the repo
 ```bash
 PYTHONPATH=src python3 -m taskgarden.cli list
 ```
+
+## Web UI
+
+Taskgarden includes a dependency-free local web UI backed by the same JSON store
+as the CLI. It is meant for focused task management rather than a decorative
+dashboard: quick capture, lanes for planned/unplanned/due/stale/done work,
+search, bucket and reminder filtering, tag filtering, keyboard shortcuts,
+configurable auto-refresh, theme presets/custom colors, and a shared create/edit
+surface.
+
+Run it from an installed release with:
+
+```bash
+taskgarden web --host 127.0.0.1 --port 8765
+```
+
+Or with the dedicated entry point:
+
+```bash
+taskgarden-web --host 127.0.0.1 --port 8765
+```
+
+Then open:
+
+```text
+http://127.0.0.1:8765
+```
+
+The UI supports adding, editing, marking done/reopening, moving between buckets,
+editing notes and tags, touching/clearing reminder state, and deleting tasks.
+It also includes a local config section for theme colors and for the planned
+reminder cron schedule. Cron times are configured and previewed in US Eastern
+time; the installed crontab uses `CRON_TZ=America/New_York` for the managed
+Taskgarden reminder entry.
 
 ## Command overview
 
@@ -192,7 +235,7 @@ taskgarden reminder-message --bucket planned --due-reminders
 By default this reads reminder-generation config from:
 
 ```bash
-/root/.openclaw/workspace/state/automation/reminder-config.json
+/root/hermes-workspace/state/automation/reminder-config.json
 ```
 
 You can override that path with:
@@ -280,10 +323,14 @@ taskgarden/
 ├── src/taskgarden/
 │   ├── __init__.py
 │   ├── cli.py
-│   ├── reminders.py
-│   └── todos.py
+│   ├── config.py
+│   ├── static/
+│   ├── todos.py
+│   └── web.py
 └── tests/
-    └── test_todos.py
+    ├── test_config.py
+    ├── test_todos.py
+    └── test_web.py
 ```
 
 ## Testing and CI
@@ -312,6 +359,7 @@ The deploy script is designed for a release-based layout rather than running dir
 - creates a dedicated virtual environment for that release
 - installs the package into that virtual environment
 - runs a smoke test against a temporary fixture todo file
+- verifies the bundled web entry point is importable
 - updates a `current` symlink to point at the new release
 - prunes older releases after a successful deployment
 
@@ -335,7 +383,6 @@ Near-term improvements:
 
 - improve CLI help text further
 - support structured export formats
-- add richer filtering and search
 - add review helpers for tasks that are still open but likely done, obsolete, or in need of reprioritization
 - support a `canceled` status for tasks that are no longer desired but were not completed
 - add richer review and triage flows for tasks that are stale, blocked, or no longer relevant

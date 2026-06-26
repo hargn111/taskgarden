@@ -215,6 +215,13 @@ def cmd_reminder_message(args: argparse.Namespace) -> None:
     print(json.dumps(result, indent=2, sort_keys=True))
 
 
+def cmd_web(args: argparse.Namespace) -> None:
+    """Run the bundled web UI."""
+    from .web import serve
+
+    serve(host=args.host, port=args.port)
+
+
 def print_json(obj: TodoItem) -> None:
     """Print an item as formatted JSON."""
     import json
@@ -319,6 +326,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Restrict to items currently due for reminder",
     )
     reminder_message_p.set_defaults(func=cmd_reminder_message)
+
+    # web
+    web_p = sub.add_parser("web", help="Run the bundled web UI")
+    web_p.add_argument("--host", default="127.0.0.1", help="Bind host")
+    web_p.add_argument("--port", type=int, default=8765, help="Bind port")
+    web_p.set_defaults(func=cmd_web)
 
     return parser
 

@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Taskgarden</title>
+    <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Taskgarden</p>
+          <h1>Tasks, reminders, and drift control</h1>
+        </div>
+        <div class="topbar-actions">
+          <span id="syncStamp" class="subtle">Not loaded</span>
+          <label class="auto-refresh-control">
+            <input id="autoRefreshEnabled" type="checkbox" />
+            <span>Auto</span>
+            <select id="autoRefreshInterval" aria-label="Auto-refresh interval">
+              <option value="10">10s</option>
+              <option value="30">30s</option>
+              <option value="60">1m</option>
+              <option value="300">5m</option>
+            </select>
+          </label>
+          <button id="refreshButton" class="button secondary" type="button">Refresh</button>
+        </div>
+      </header>
+
+      <section class="summary-grid" aria-label="Task summary">
+        <button class="summary-cell" type="button" data-lane="open">
+          <span>Open</span><strong id="countOpen">—</strong>
+        </button>
+        <button class="summary-cell" type="button" data-lane="planned">
+          <span>Planned</span><strong id="countPlanned">—</strong>
+        </button>
+        <button class="summary-cell" type="button" data-lane="due">
+          <span>Due reminders</span><strong id="countDue">—</strong>
+        </button>
+        <button class="summary-cell" type="button" data-lane="stale">
+          <span>Stale planned</span><strong id="countStale">—</strong>
+        </button>
+      </section>
+
+      <main class="workspace">
+        <aside class="sidebar" aria-label="Task controls">
+          <form id="quickAddForm" class="panel quick-add">
+            <div class="section-heading">
+              <h2>Quick add</h2>
+              <span class="hint">Enter saves</span>
+            </div>
+            <label>
+              <span>Title</span>
+              <input id="quickTitle" name="title" required autocomplete="off" placeholder="Capture the task" />
+            </label>
+            <div class="field-row">
+              <label>
+                <span>Bucket</span>
+                <select id="quickBucket" name="bucket">
+                  <option value="unplanned">Unplanned</option>
+                  <option value="planned">Planned</option>
+                </select>
+              </label>
+              <label>
+                <span>Reminder</span>
+                <input id="quickReminder" name="reminder" inputmode="decimal" placeholder="hours" />
+              </label>
+            </div>
+            <label>
+              <span>Tags</span>
+              <input id="quickTags" name="tags" autocomplete="off" placeholder="comma, separated" />
+            </label>
+            <button class="button primary full" type="submit">Add task</button>
+          </form>
+
+          <section class="panel">
+            <div class="section-heading">
+              <h2>Views</h2>
+              <button id="newTaskButton" class="text-button" type="button">New full task</button>
+            </div>
+            <div id="laneButtons" class="lane-list" role="listbox" aria-label="Task views">
+              <button type="button" data-lane="open">Open</button>
+              <button type="button" data-lane="planned">Planned</button>
+              <button type="button" data-lane="unplanned">Unplanned</button>
+              <button type="button" data-lane="due">Due reminders</button>
+              <button type="button" data-lane="stale">Stale planned</button>
+              <button type="button" data-lane="done">Done</button>
+              <button type="button" data-lane="all">All tasks</button>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="section-heading">
+              <h2>Tags</h2>
+              <button id="clearTagButton" class="text-button" type="button">Clear</button>
+            </div>
+            <div id="tagCloud" class="tag-cloud" aria-live="polite"></div>
+          </section>
+
+          <section class="panel shortcuts">
+            <div class="section-heading"><h2>Shortcuts</h2></div>
+            <dl>
+              <div><dt>/</dt><dd>Search</dd></div>
+              <div><dt>N</dt><dd>New task</dd></div>
+              <div><dt>Ctrl+S</dt><dd>Save editor</dd></div>
+              <div><dt>Esc</dt><dd>Close editor</dd></div>
+            </dl>
+          </section>
+
+          <section class="panel config-panel" aria-label="Taskgarden configuration">
+            <div class="section-heading">
+              <h2>Config</h2>
+              <button id="saveConfigButton" class="text-button" type="button">Save</button>
+            </div>
+
+            <div class="config-stack">
+              <div class="config-block">
+                <h3>Theme</h3>
+                <label>
+                  <span>Preset</span>
+                  <select id="themePreset"></select>
+                </label>
+                <div id="themeColorGrid" class="theme-color-grid"></div>
+              </div>
+
+              <div class="config-block">
+                <h3>Reminder cron</h3>
+                <label class="checkbox-row">
+                  <input id="cronEnabled" type="checkbox" />
+                  <span>Enabled</span>
+                </label>
+                <div class="field-row">
+                  <label>
+                    <span>Start ET</span>
+                    <input id="cronStart" type="time" />
+                  </label>
+                  <label>
+                    <span>Every hours</span>
+                    <input id="cronInterval" type="number" min="1" max="24" step="1" />
+                  </label>
+                </div>
+                <label>
+                  <span>Runs per day</span>
+                  <input id="cronRuns" type="number" min="1" max="24" step="1" />
+                </label>
+                <p id="cronExpression" class="subtle cron-expression"></p>
+                <ol id="cronPreview" class="cron-preview"></ol>
+              </div>
+            </div>
+          </section>
+        </aside>
+
+        <section class="task-column" aria-label="Task list">
+          <div class="list-toolbar panel">
+            <label class="search-field">
+              <span>Search</span>
+              <input id="searchInput" autocomplete="off" placeholder="Title, note, tag, or id" />
+            </label>
+            <label>
+              <span>Bucket</span>
+              <select id="bucketFilter">
+                <option value="all">All</option>
+                <option value="planned">Planned</option>
+                <option value="unplanned">Unplanned</option>
+              </select>
+            </label>
+            <label>
+              <span>Reminder</span>
+              <select id="reminderFilter">
+                <option value="all">All</option>
+                <option value="with">With reminders</option>
+                <option value="without">Without reminders</option>
+              </select>
+            </label>
+          </div>
+          <div id="activeFilterLine" class="active-filter-line subtle"></div>
+          <div id="taskList" class="task-list" aria-live="polite"></div>
+        </section>
+
+        <section class="editor-column" aria-label="Task editor">
+          <div id="editorMount" class="editor-shell panel"></div>
+        </section>
+      </main>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="/assets/app.js" defer></script>
+  </body>
+</html>

@@ -36,6 +36,7 @@ cat > "$SMOKE_DATA" <<'EOF'
 }
 EOF
 TASKGARDEN_DATA_PATH="$SMOKE_DATA" "$RELEASE_DIR/.venv/bin/python" -m taskgarden.cli list --all >/dev/null
+TASKGARDEN_DATA_PATH="$SMOKE_DATA" "$RELEASE_DIR/.venv/bin/taskgarden-web" --help >/dev/null
 rm -f "$SMOKE_DATA"
 
 ln -sfn "$RELEASE_DIR" "$CURRENT_LINK"

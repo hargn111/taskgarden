@@ -32,6 +32,7 @@ dev = [
 
 [project.scripts]
 taskgarden = "taskgarden.cli:main"
+taskgarden-web = "taskgarden.web:main"
 
 [tool.black]
 line-length = 88

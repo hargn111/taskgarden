@@ -8,7 +8,7 @@ from typing import Any, Callable, Dict, List, Optional, TypedDict
 
 from .todos import TodoItem, reminder_due
 
-DEFAULT_REMINDER_CONFIG_PATH = Path("/root/.openclaw/workspace/state/automation/reminder-config.json")
+DEFAULT_REMINDER_CONFIG_PATH = Path("/root/hermes-workspace/state/automation/reminder-config.json")
 DEFAULT_STYLE_PROMPT = (
     "Brief, direct, and lightly human. Sound like a useful reminder, not a chatbot."
 )

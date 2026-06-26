@@ -155,3 +155,9 @@ cython_debug/
 # Task Garden specific
 .coverage.*
 *.log
+
+# Local Hermes/agent operational state
+OPERATIONS.md
+AGENT_CHANGELOG.md
+CODEMAP.md
+.hermes/
